@@ -2,154 +2,162 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ASSOPESCA - Sistema Completo</title>
-
+<title>Sistema Administrativo</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
 <style>
-body{margin:0;font-family:Segoe UI;background:#f4f6f9}
-.container{max-width:400px;margin:100px auto;background:#fff;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}
+body{font-family:Arial;background:#f4f6f9;margin:0}
+header{background:#0d6efd;color:#fff;padding:15px;text-align:center}
+.container{padding:20px}
+.card{background:#fff;padding:20px;margin-bottom:20px;border-radius:10px;box-shadow:0 3px 8px rgba(0,0,0,0.1)}
+input,select,button{padding:8px;margin:5px 0;width:100%}
+button{background:#0d6efd;color:white;border:none;border-radius:5px;cursor:pointer}
+button:hover{background:#084298}
 .hidden{display:none}
-.sidebar{width:240px;height:100vh;background:#006400;position:fixed;color:#fff;padding:20px}
-.sidebar button{width:100%;margin-top:10px;background:#004d00;color:#fff;border:none;padding:10px;cursor:pointer}
-.main{margin-left:260px;padding:30px}
-.card{background:#fff;padding:20px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:20px}
-input,select,button{padding:8px;margin:5px;width:95%}
-button{background:#006400;color:#fff;border:none;border-radius:5px;cursor:pointer}
-button:hover{background:#004d00}
-canvas{max-height:300px}
+.logout{background:#dc3545}
+.logout:hover{background:#a71d2a}
+h2{margin-top:0}
 </style>
 </head>
 <body>
 
+<header>
+<h2>SISTEMA ADMINISTRATIVO ASSOPESCA</h2>
+</header>
+
+<div class="container">
+
 <!-- LOGIN -->
-<div class="container" id="loginBox">
-<h2>Login - ASSOPESCA</h2>
-<select id="usuarioSelect"></select>
-<input type="password" id="senha" placeholder="Senha">
+<div id="loginBox" class="card">
+<h3>Login</h3>
+<input type="text" id="loginUser" placeholder="Usuário">
+<input type="password" id="loginPass" placeholder="Senha">
 <button onclick="login()">Entrar</button>
-<p id="erro" style="color:red;"></p>
 </div>
 
 <!-- TROCA SENHA -->
-<div class="container hidden" id="trocaSenhaBox">
-<h3>Primeiro Acesso - Trocar Senha</h3>
-<input type="password" id="novaSenha" placeholder="Nova Senha">
-<input type="password" id="confirmarSenha" placeholder="Confirmar Senha">
-<button onclick="trocarSenha()">Salvar Nova Senha</button>
+<div id="trocaSenhaBox" class="card hidden">
+<h3>Trocar Senha</h3>
+<input type="password" id="novaSenha" placeholder="Nova senha">
+<button onclick="trocarSenha()">Salvar</button>
 </div>
 
-<!-- MENU -->
-<div class="sidebar hidden" id="menu">
-<h3>ASSOPESCA</h3>
-<button onclick="exportarExcel()">Exportar Excel</button>
-<button onclick="logout()">Sair</button>
-</div>
-
-<!-- PAINEL -->
-<div class="main hidden" id="painel">
+<!-- COLABORADOR -->
+<div id="colaboradorArea" class="hidden">
 
 <div class="card">
 <h3>Registrar Atendimento</h3>
 <input type="text" id="socio" placeholder="Nome do Sócio">
 <input type="text" id="inscricao" placeholder="Inscrição">
-<select id="colaboradorSelect"></select>
+
 <select id="servicoSelect"></select>
-<button onclick="registrar()">Registrar</button>
+
+<button onclick="registrarAtendimento()">Registrar</button>
 </div>
 
-<div class="card hidden" id="cadColabCard">
-<h3>Cadastrar Novo Colaborador</h3>
-<input type="text" id="novoColaborador">
-<button onclick="cadastrarColaborador()">Cadastrar</button>
+<button class="logout" onclick="logout()">Sair</button>
+
 </div>
 
-<div class="card hidden" id="cadServicoCard">
-<h3>Cadastrar Novo Serviço</h3>
-<input type="text" id="novoServico">
-<button onclick="cadastrarServico()">Cadastrar</button>
+<!-- ADMIN -->
+<div id="adminArea" class="hidden">
+
+<div class="card">
+<h3>Dashboard Geral</h3>
+<canvas id="graficoGeral"></canvas>
 </div>
 
 <div class="card">
-<h3>Dashboard</h3>
-<canvas id="grafico"></canvas>
+<h3>Dashboard Individual</h3>
+<select id="filtroColaborador" onchange="gerarGraficoIndividual()"></select>
+<canvas id="graficoIndividual"></canvas>
+</div>
+
+<div class="card">
+<h3>Cadastrar Colaborador</h3>
+<input type="text" id="novoUser" placeholder="Nome usuário">
+<select id="novoTipo">
+<option value="colaborador">Colaborador</option>
+<option value="admin">Administrador</option>
+</select>
+<button onclick="cadastrarUsuario()">Cadastrar</button>
+</div>
+
+<button class="logout" onclick="logout()">Sair</button>
+
 </div>
 
 </div>
 
 <script>
 
-// ================= CRIPTOGRAFIA =================
-async function hashSenha(senha){
-const encoder=new TextEncoder();
-const data=encoder.encode(senha);
-const hash=await crypto.subtle.digest("SHA-256",data);
-return Array.from(new Uint8Array(hash))
-.map(b=>b.toString(16).padStart(2,"0")).join("");
+// ===== SERVIÇOS FIXOS =====
+let servicos = [
+"Manutenção RGP",
+"Edição dados RGP",
+"Solicitação RGP novo",
+"Recadastramento",
+"Recurso RGP suspenso",
+"Emissão declarações",
+"Agendamentos aposentadoria",
+"Agendamentos salário materno",
+"Agendamentos auxílio doença",
+"Protocolo seguro defeso",
+"Consulta seguro defeso",
+"Recursos seguro defeso",
+"Atualização cadastro INSS",
+"Atualização cadastro Receita Federal",
+"Emissão NIT",
+"Emissão matrícula CEI",
+"Emissão carteira RGP",
+"Emissão carteira de sócio"
+];
+
+// ===== USUÁRIOS INICIAIS =====
+if(!localStorage.getItem("usuarios")){
+let usuariosPadrao=[
+{user:"Elizângela",tipo:"colaborador",senha:hash("00"),primeiro:true},
+{user:"Raquel",tipo:"colaborador",senha:hash("00"),primeiro:true},
+{user:"Fernando",tipo:"colaborador",senha:hash("00"),primeiro:true},
+{user:"Sarah",tipo:"colaborador",senha:hash("00"),primeiro:true},
+{user:"Mayla",tipo:"colaborador",senha:hash("00"),primeiro:true},
+{user:"Halana",tipo:"colaborador",senha:hash("00"),primeiro:true},
+{user:"Wanda",tipo:"colaborador",senha:hash("00"),primeiro:true},
+{user:"Márcio",tipo:"admin",senha:hash("2006"),primeiro:true},
+{user:"Arthur",tipo:"admin",senha:hash("2006"),primeiro:true},
+{user:"Antônio",tipo:"admin",senha:hash("2006"),primeiro:true}
+];
+localStorage.setItem("usuarios",JSON.stringify(usuariosPadrao));
 }
 
-// ================= DADOS INICIAIS =================
+if(!localStorage.getItem("atendimentos")){
+localStorage.setItem("atendimentos",JSON.stringify([]));
+}
 
-let colaboradoresPadrao=[
-"Elizângela","Raquel","Fernando","Sarah","Mayla",
-"Halana","Wanda","Márcio","Arthur","Terezinha"
-];
-
-let servicosPadrao=[
-"Manutenção RGP","Edição Dados RGP","Solicitação RGP Novo",
-"Recadastramento","Recurso RGP Suspenso","Emissão Declarações",
-"Agendamentos","Protocolo Seguro Defeso","Consulta Seguro Defeso",
-"Recursos Seguro Defeso","Atualização INSS","Atualização Receita Federal",
-"Emissão NIT","Matrícula CEI","Carteira RGP","Carteira Sócio"
-];
-
-let grafico;
 let usuarioLogado=null;
 
-// ================= INICIALIZAÇÃO =================
-
-async function inicializar(){
-
-if(!localStorage.getItem("usuarios")){
-const senhaColab=await hashSenha("00");
-const senhaAdmin=await hashSenha("2006");
-
-let usuarios={};
-
-colaboradoresPadrao.forEach(nome=>{
-usuarios[nome]={nivel:"colaborador",senha:senhaColab,primeiroAcesso:true};
-});
-
-usuarios["Antônio"]={nivel:"adminPrincipal",senha:senhaAdmin,primeiroAcesso:true};
-usuarios["Márcio"]={nivel:"admin",senha:senhaAdmin,primeiroAcesso:true};
-usuarios["Arthur"]={nivel:"admin",senha:senhaAdmin,primeiroAcesso:true};
-
-localStorage.setItem("usuarios",JSON.stringify(usuarios));
-localStorage.setItem("colaboradores",JSON.stringify(colaboradoresPadrao));
-localStorage.setItem("servicos",JSON.stringify(servicosPadrao));
+// ===== HASH SHA256 =====
+function hash(text){
+return CryptoJS.SHA256(text).toString();
 }
 
-carregarUsuarios();
-}
+// carregar CryptoJS
+var script=document.createElement('script');
+script.src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js";
+document.head.appendChild(script);
 
-// ================= LOGIN =================
+// ===== LOGIN =====
+function login(){
+let user=document.getElementById("loginUser").value;
+let pass=document.getElementById("loginPass").value;
+let usuarios=JSON.parse(localStorage.getItem("usuarios"));
 
-async function login(){
-const usuarios=JSON.parse(localStorage.getItem("usuarios"));
-const nome=document.getElementById("usuarioSelect").value;
-const senhaDigitada=await hashSenha(document.getElementById("senha").value);
+let encontrado=usuarios.find(u=>u.user===user && u.senha===hash(pass));
 
-if(usuarios[nome].senha!==senhaDigitada){
-document.getElementById("erro").innerText="Senha incorreta";
-return;
-}
+if(!encontrado){alert("Login inválido");return;}
 
-usuarioLogado=nome;
-localStorage.setItem("usuarioLogado",nome);
+usuarioLogado=encontrado;
 
-if(usuarios[nome].primeiroAcesso){
+if(encontrado.primeiro){
 document.getElementById("loginBox").classList.add("hidden");
 document.getElementById("trocaSenhaBox").classList.remove("hidden");
 }else{
@@ -157,174 +165,136 @@ entrarSistema();
 }
 }
 
-// ================= TROCAR SENHA =================
-
-async function trocarSenha(){
-const nova=document.getElementById("novaSenha").value;
-const confirmar=document.getElementById("confirmarSenha").value;
-
-if(nova!==confirmar){alert("Senhas não conferem");return;}
-
+// ===== TROCAR SENHA =====
+function trocarSenha(){
+let nova=document.getElementById("novaSenha").value;
 let usuarios=JSON.parse(localStorage.getItem("usuarios"));
-usuarios[usuarioLogado].senha=await hashSenha(nova);
-usuarios[usuarioLogado].primeiroAcesso=false;
+let u=usuarios.find(u=>u.user===usuarioLogado.user);
+u.senha=hash(nova);
+u.primeiro=false;
 localStorage.setItem("usuarios",JSON.stringify(usuarios));
-
+alert("Senha atualizada");
 entrarSistema();
 }
 
-// ================= ENTRAR =================
-
+// ===== ENTRAR =====
 function entrarSistema(){
 document.getElementById("trocaSenhaBox").classList.add("hidden");
-document.getElementById("loginBox").classList.add("hidden");
-document.getElementById("menu").classList.remove("hidden");
-document.getElementById("painel").classList.remove("hidden");
-
-aplicarPermissoes();
-carregarSelects();
-atualizarDashboard();
-}
-
-// ================= PERMISSÕES =================
-
-function aplicarPermissoes(){
-let usuarios=JSON.parse(localStorage.getItem("usuarios"));
-let nivel=usuarios[usuarioLogado].nivel;
-
-if(nivel==="adminPrincipal"){
-document.getElementById("cadColabCard").classList.remove("hidden");
-document.getElementById("cadServicoCard").classList.remove("hidden");
-}
-
-if(nivel==="colaborador"){
-document.getElementById("colaboradorSelect").value=usuarioLogado;
-document.getElementById("colaboradorSelect").disabled=true;
+if(usuarioLogado.tipo==="colaborador"){
+carregarServicos();
+document.getElementById("colaboradorArea").classList.remove("hidden");
+}else{
+carregarFiltroColaborador();
+gerarGraficoGeral();
+document.getElementById("adminArea").classList.remove("hidden");
 }
 }
 
-// ================= SELECTS =================
-
-function carregarSelects(){
-let colaboradores=JSON.parse(localStorage.getItem("colaboradores"));
-let servicos=JSON.parse(localStorage.getItem("servicos"));
-
-let colSelect=document.getElementById("colaboradorSelect");
-colSelect.innerHTML="";
-colaboradores.forEach(c=>{
-let op=document.createElement("option");
-op.value=c; op.textContent=c;
-colSelect.appendChild(op);
-});
-
-let servSelect=document.getElementById("servicoSelect");
-servSelect.innerHTML="";
+// ===== CARREGAR SERVIÇOS =====
+function carregarServicos(){
+let select=document.getElementById("servicoSelect");
+select.innerHTML="";
 servicos.forEach(s=>{
-let op=document.createElement("option");
-op.value=s; op.textContent=s;
-servSelect.appendChild(op);
+let opt=document.createElement("option");
+opt.value=s;
+opt.textContent=s;
+select.appendChild(opt);
 });
 }
 
-// ================= CADASTROS =================
+// ===== REGISTRAR ATENDIMENTO =====
+function registrarAtendimento(){
+let socio=document.getElementById("socio").value;
+let inscricao=document.getElementById("inscricao").value;
+let servico=document.getElementById("servicoSelect").value;
 
-async function cadastrarColaborador(){
-let nome=document.getElementById("novoColaborador").value;
-let colaboradores=JSON.parse(localStorage.getItem("colaboradores"));
-colaboradores.push(nome);
-localStorage.setItem("colaboradores",JSON.stringify(colaboradores));
+let atendimentos=JSON.parse(localStorage.getItem("atendimentos"));
 
-let usuarios=JSON.parse(localStorage.getItem("usuarios"));
-usuarios[nome]={nivel:"colaborador",senha:await hashSenha("00"),primeiroAcesso:true};
-localStorage.setItem("usuarios",JSON.stringify(usuarios));
+atendimentos.push({
+colaborador:usuarioLogado.user,
+socio,
+inscricao,
+servico,
+data:new Date().toLocaleString()
+});
 
-carregarUsuarios();
-carregarSelects();
-}
-
-function cadastrarServico(){
-let nome=document.getElementById("novoServico").value;
-let servicos=JSON.parse(localStorage.getItem("servicos"));
-servicos.push(nome);
-localStorage.setItem("servicos",JSON.stringify(servicos));
-carregarSelects();
-}
-
-// ================= REGISTRO =================
-
-function registrar(){
-let atendimentos=JSON.parse(localStorage.getItem("atendimentos"))||[];
-
-let novo={
-socio:document.getElementById("socio").value,
-inscricao:document.getElementById("inscricao").value,
-colaborador:document.getElementById("colaboradorSelect").value,
-servico:document.getElementById("servicoSelect").value,
-dataHora:new Date().toLocaleString()
-};
-
-atendimentos.push(novo);
 localStorage.setItem("atendimentos",JSON.stringify(atendimentos));
-
-atualizarDashboard();
+alert("Atendimento registrado");
+document.getElementById("socio").value="";
+document.getElementById("inscricao").value="";
 }
 
-// ================= DASHBOARD =================
-
-function atualizarDashboard(){
-let atendimentos=JSON.parse(localStorage.getItem("atendimentos"))||[];
-let usuarios=JSON.parse(localStorage.getItem("usuarios"));
-let nivel=usuarios[usuarioLogado].nivel;
-
-if(nivel==="colaborador"){
-atendimentos=atendimentos.filter(a=>a.colaborador===usuarioLogado);
-}
-
+// ===== DASHBOARD GERAL =====
+function gerarGraficoGeral(){
+let atendimentos=JSON.parse(localStorage.getItem("atendimentos"));
 let contagem={};
 atendimentos.forEach(a=>{
 contagem[a.colaborador]=(contagem[a.colaborador]||0)+1;
 });
 
-if(grafico) grafico.destroy();
-
-grafico=new Chart(document.getElementById("grafico"),{
-type:"bar",
-data:{
-labels:Object.keys(contagem),
-datasets:[{
-label:"Atendimentos",
-data:Object.values(contagem),
-backgroundColor:"green"
-}]
-}
+new Chart(document.getElementById("graficoGeral"),{
+type:'bar',
+data:{labels:Object.keys(contagem),
+datasets:[{label:'Atendimentos',data:Object.values(contagem)}]}
 });
 }
 
-// ================= EXPORTAÇÃO =================
-
-function exportarExcel(){
-let atendimentos=JSON.parse(localStorage.getItem("atendimentos"))||[];
-let worksheet=XLSX.utils.json_to_sheet(atendimentos);
-let workbook=XLSX.utils.book_new();
-XLSX.utils.book_append_sheet(workbook,worksheet,"Atendimentos");
-XLSX.writeFile(workbook,"Relatorio_ASSOPESCA.xlsx");
-}
-
-function logout(){ location.reload(); }
-
-function carregarUsuarios(){
+// ===== DASHBOARD INDIVIDUAL =====
+function carregarFiltroColaborador(){
+let select=document.getElementById("filtroColaborador");
 let usuarios=JSON.parse(localStorage.getItem("usuarios"));
-let select=document.getElementById("usuarioSelect");
 select.innerHTML="";
-Object.keys(usuarios).forEach(nome=>{
-let op=document.createElement("option");
-op.value=nome; op.textContent=nome;
-select.appendChild(op);
+usuarios.filter(u=>u.tipo==="colaborador").forEach(u=>{
+let opt=document.createElement("option");
+opt.value=u.user;
+opt.textContent=u.user;
+select.appendChild(opt);
 });
 }
 
-inicializar();
+function gerarGraficoIndividual(){
+let nome=document.getElementById("filtroColaborador").value;
+let atendimentos=JSON.parse(localStorage.getItem("atendimentos"));
+let contagem={};
+atendimentos.filter(a=>a.colaborador===nome)
+.forEach(a=>{
+contagem[a.servico]=(contagem[a.servico]||0)+1;
+});
+
+new Chart(document.getElementById("graficoIndividual"),{
+type:'pie',
+data:{labels:Object.keys(contagem),
+datasets:[{data:Object.values(contagem)}]}
+});
+}
+
+// ===== CADASTRAR USUÁRIO =====
+function cadastrarUsuario(){
+let user=document.getElementById("novoUser").value;
+let tipo=document.getElementById("novoTipo").value;
+let usuarios=JSON.parse(localStorage.getItem("usuarios"));
+
+if(usuarios.find(u=>u.user===user)){
+alert("Usuário já existe");return;
+}
+
+usuarios.push({
+user,
+tipo,
+senha:hash(tipo==="admin"?"2006":"00"),
+primeiro:true
+});
+
+localStorage.setItem("usuarios",JSON.stringify(usuarios));
+alert("Usuário cadastrado");
+}
+
+// ===== LOGOUT =====
+function logout(){
+location.reload();
+}
 
 </script>
+
 </body>
 </html>
