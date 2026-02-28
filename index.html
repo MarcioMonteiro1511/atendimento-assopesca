@@ -1,300 +1,338 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<title>Sistema Administrativo</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-body{font-family:Arial;background:#f4f6f9;margin:0}
-header{background:#0d6efd;color:#fff;padding:15px;text-align:center}
-.container{padding:20px}
-.card{background:#fff;padding:20px;margin-bottom:20px;border-radius:10px;box-shadow:0 3px 8px rgba(0,0,0,0.1)}
-input,select,button{padding:8px;margin:5px 0;width:100%}
-button{background:#0d6efd;color:white;border:none;border-radius:5px;cursor:pointer}
-button:hover{background:#084298}
-.hidden{display:none}
-.logout{background:#dc3545}
-.logout:hover{background:#a71d2a}
-h2{margin-top:0}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Siga-Pesca | ASSOPESCA</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-green: #27ae60; /* Verde Institucional */
+            --dark-green: #1e8449;
+            --bg-light: #f0f4f1;
+            --white: #ffffff;
+            --danger: #e74c3c;
+        }
+        
+        body { font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; background: var(--bg-light); color: #2c3e50; }
+        .hidden { display: none !important; }
+
+        /* Login Personalizado */
+        #login-screen { 
+            height: 100vh; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            background: linear-gradient(135deg, var(--primary-green), #2ecc71); 
+        }
+        .login-box { 
+            background: var(--white); 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15); 
+            width: 100%; 
+            max-width: 380px; 
+            text-align: center;
+        }
+        .logo-placeholder { 
+            background: #eee; 
+            height: 80px; 
+            margin-bottom: 20px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            border-radius: 8px;
+            font-weight: bold;
+            color: var(--primary-green);
+            border: 2px dashed var(--primary-green);
+        }
+
+        /* Header e Nav */
+        nav { 
+            background: var(--primary-green); 
+            color: white; 
+            padding: 10px 5%; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        /* Container e Cards */
+        .container { padding: 30px 5%; max-width: 1200px; margin: auto; }
+        .card { 
+            background: var(--white); 
+            padding: 20px; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+            margin-bottom: 25px; 
+            border-top: 4px solid var(--primary-green);
+        }
+
+        /* Formulários e Botões */
+        input, select, button { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 8px 0; 
+            border: 1px solid #cbd5e0; 
+            border-radius: 6px; 
+            font-size: 14px;
+        }
+        button { 
+            background: var(--primary-green); 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+            font-weight: 600; 
+            transition: background 0.2s;
+        }
+        button:hover { background: var(--dark-green); }
+        .btn-admin { background: #34495e; }
+        .btn-logout { background: transparent; border: 1px solid white; width: auto; padding: 6px 15px; }
+        .btn-logout:hover { background: rgba(255,255,255,0.2); }
+
+        /* Tabelas */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+        th { background: #f8faf9; color: var(--dark-green); text-align: left; padding: 12px; border-bottom: 2px solid #edf2f0; }
+        td { padding: 12px; border-bottom: 1px solid #edf2f0; font-size: 14px; }
+
+        .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        @media (max-width: 850px) { .dashboard-grid { grid-template-columns: 1fr; } }
+    </style>
 </head>
 <body>
 
-<header>
-<h2>SISTEMA ADMINISTRATIVO ASSOPESCA</h2>
-</header>
+    <div id="login-screen">
+        <div class="login-box">
+            <div class="logo-placeholder">LOGOMARCA ASSOPESCA</div>
+            <h2 style="margin-bottom: 20px; color: #2d3748;">Siga-Pesca</h2>
+            <input type="text" id="login-user" placeholder="Usuário">
+            <input type="password" id="login-pass" placeholder="Senha">
+            <button onclick="handleLogin()">Acessar Sistema</button>
+            <p id="login-msg" style="color: var(--danger); font-size: 13px; margin-top: 10px;"></p>
+        </div>
+    </div>
 
-<div class="container">
+    <div id="password-screen" class="hidden">
+        <div id="login-screen"> <div class="login-box">
+                <h3>🔒 Segurança</h3>
+                <p style="font-size: 14px; color: #718096;">Primeiro acesso detectado. Altere sua senha padrão.</p>
+                <input type="password" id="new-pass" placeholder="Nova Senha">
+                <button onclick="updatePassword()">Salvar e Entrar</button>
+            </div>
+        </div>
+    </div>
 
-<!-- LOGIN -->
-<div id="loginBox" class="card">
-<h3>Login</h3>
-<input type="text" id="loginUser" placeholder="Usuário">
-<input type="password" id="loginPass" placeholder="Senha">
-<button onclick="login()">Entrar</button>
-</div>
+    <div id="main-screen" class="hidden">
+        <nav>
+            <div><strong>ASSOPESCA</strong> | <small id="user-display"></small></div>
+            <button class="btn-logout" onclick="logout()">Sair</button>
+        </nav>
 
-<!-- TROCA SENHA -->
-<div id="trocaSenhaBox" class="card hidden">
-<h3>Trocar Senha</h3>
-<input type="password" id="novaSenha" placeholder="Nova senha">
-<button onclick="trocarSenha()">Salvar</button>
-</div>
+        <div class="container">
+            <div id="colab-area" class="hidden">
+                <div class="card">
+                    <h3>📝 Novo Atendimento</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <input type="text" id="socio-nome" placeholder="Nome do Sócio">
+                        <input type="text" id="socio-inscricao" placeholder="Nº Inscrição">
+                    </div>
+                    <select id="atendimento-servico"></select>
+                    <button onclick="saveAttendance()">Registrar Atendimento</button>
+                </div>
+                <div class="card">
+                    <h3>Histórico Pessoal</h3>
+                    <table id="table-colab">
+                        <thead>
+                            <tr><th>Data/Hora</th><th>Sócio</th><th>Serviço</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
 
-<!-- COLABORADOR -->
-<div id="colaboradorArea" class="hidden">
+            <div id="admin-area" class="hidden">
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <h3>📊 Produtividade da Equipe</h3>
+                        <canvas id="chartGeneral" height="150"></canvas>
+                    </div>
+                    <div class="card">
+                        <h3>⚙️ Gestão</h3>
+                        <button onclick="exportToExcel()">📥 Exportar Relatório Excel</button>
+                        <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+                        <h4>Novo Colaborador</h4>
+                        <input type="text" id="new-user-name" placeholder="Nome Completo">
+                        <select id="new-user-role">
+                            <option value="colab">Colaborador Operacional</option>
+                            <option value="admin">Diretoria</option>
+                        </select>
+                        <button class="btn-admin" onclick="addNewUser()">Cadastrar Usuário</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>📋 Relatório Geral de Atendimentos</h3>
+                    <table id="table-admin">
+                        <thead>
+                            <tr><th>Colaborador</th><th>Sócio</th><th>Serviço</th><th>Data/Hora</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<div class="card">
-<h3>Registrar Atendimento</h3>
-<input type="text" id="socio" placeholder="Nome do Sócio">
-<input type="text" id="inscricao" placeholder="Inscrição">
+    <script>
+        /* CONFIGURAÇÃO DE DADOS INICIAIS [cite: 13, 115, 119] */
+        const INITIAL_SERVICES = [
+            "Manutenção RGP", "Edição dados RGP", "Solicitação RGP novo", "Recadastramento", 
+            "Recurso RGP suspenso", "Emissão declarações", "Aposentadoria", "Salário Materno", 
+            "Auxílio Doença", "Protocolo Seguro Defeso", "Consulta Seguro Defeso", 
+            "Recursos Seguro Defeso", "Atualização Cadastro (INSS/RF)", 
+            "Emissão NIT/CEI", "Emissão Carteira RGP", "Carteira de Sócio"
+        ];
 
-<select id="servicoSelect"></select>
+        const INITIAL_USERS = [
+            { user: "antonio", pass: "123", name: "Antônio", role: "admin", firstAccess: true },
+            { user: "marcio", pass: "123", name: "Márcio", role: "admin", firstAccess: true },
+            { user: "arthur", pass: "123", name: "Arthur", role: "admin", firstAccess: true },
+            { user: "elizangela", pass: "123", name: "Elizângela", role: "colab", firstAccess: true },
+            { user: "raquel", pass: "123", name: "Raquel", role: "colab", firstAccess: true },
+            { user: "fernando", pass: "123", name: "Fernando", role: "colab", firstAccess: true },
+            { user: "sarah", pass: "123", name: "Sarah", role: "colab", firstAccess: true },
+            { user: "mayla", pass: "123", name: "Mayla", role: "colab", firstAccess: true },
+            { user: "halana", pass: "123", name: "Halana", role: "colab", firstAccess: true },
+            { user: "wanda", pass: "123", name: "Wanda", role: "colab", firstAccess: true },
+            { user: "terezinha", pass: "123", name: "Terezinha", role: "colab", firstAccess: true }
+        ];
 
-<button onclick="registrarAtendimento()">Registrar</button>
-</div>
+        let currentUser = null;
+        let db = JSON.parse(localStorage.getItem('assopesca_v2')) || {
+            users: INITIAL_USERS,
+            services: INITIAL_SERVICES,
+            records: []
+        };
 
-<button class="logout" onclick="logout()">Sair</button>
+        const save = () => localStorage.setItem('assopesca_v2', JSON.stringify(db));
 
-</div>
+        /* LÓGICA DE LOGIN [cite: 96, 120] */
+        function handleLogin() {
+            const u = document.getElementById('login-user').value.toLowerCase();
+            const p = document.getElementById('login-pass').value;
+            const user = db.users.find(x => x.user === u && x.pass === p);
 
-<!-- ADMIN -->
-<div id="adminArea" class="hidden">
+            if (user) {
+                currentUser = user;
+                user.firstAccess ? showScreen('password-screen') : initApp();
+            } else {
+                document.getElementById('login-msg').innerText = "Credenciais incorretas.";
+            }
+        }
 
-<div class="card">
-<h3>Dashboard Geral</h3>
-<canvas id="graficoGeral"></canvas>
-</div>
+        function updatePassword() {
+            const np = document.getElementById('new-pass').value;
+            if(np.length < 3) return alert("Senha muito curta.");
+            const idx = db.users.findIndex(x => x.user === currentUser.user);
+            db.users[idx].pass = np;
+            db.users[idx].firstAccess = false;
+            save();
+            initApp();
+        }
 
-<div class="card">
-<h3>Dashboard Individual</h3>
-<select id="filtroColaborador" onchange="gerarGraficoIndividual()"></select>
-<canvas id="graficoIndividual"></canvas>
-</div>
+        function showScreen(id) {
+            ['login-screen', 'password-screen', 'main-screen'].forEach(s => document.getElementById(s).classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
 
-<div class="card">
-<h3>Cadastrar Colaborador</h3>
-<input type="text" id="novoUser" placeholder="Nome usuário">
-<select id="novoTipo">
-<option value="colaborador">Colaborador</option>
-<option value="admin">Administrador</option>
-</select>
-<button onclick="cadastrarUsuario()">Cadastrar</button>
-</div>
+        function initApp() {
+            showScreen('main-screen');
+            document.getElementById('user-display').innerText = currentUser.name.toUpperCase();
+            
+            if (currentUser.role === 'admin') {
+                document.getElementById('admin-area').classList.remove('hidden');
+                updateAdminView();
+            } else {
+                document.getElementById('colab-area').classList.remove('hidden');
+                const sel = document.getElementById('atendimento-servico');
+                sel.innerHTML = db.services.map(s => `<option value="${s}">${s}</option>`).join('');
+                updateColabTable();
+            }
+        }
 
-<button class="logout" onclick="logout()">Sair</button>
+        /* REGISTRO DE ATENDIMENTOS [cite: 100, 110, 125] */
+        function saveAttendance() {
+            const sNome = document.getElementById('socio-nome').value;
+            const sInsc = document.getElementById('socio-inscricao').value;
+            const serv = document.getElementById('atendimento-servico').value;
 
-</div>
+            if(!sNome || !sInsc) return alert("Informe Sócio e Inscrição.");
 
-</div>
+            db.records.push({
+                colab: currentUser.name,
+                socio: sNome,
+                insc: sInsc,
+                serv: serv,
+                time: new Date().toLocaleString('pt-BR')
+            });
+            save();
+            document.getElementById('socio-nome').value = '';
+            document.getElementById('socio-inscricao').value = '';
+            updateColabTable();
+            alert("✅ Registro salvo!");
+        }
 
-<script>
+        function updateColabTable() {
+            const my = db.records.filter(r => r.colab === currentUser.name).reverse();
+            document.querySelector('#table-colab tbody').innerHTML = my.map(r => 
+                `<tr><td>${r.time}</td><td>${r.socio}</td><td>${r.serv}</td></tr>`
+            ).join('');
+        }
 
-// ===== SERVIÇOS FIXOS =====
-let servicos = [
-"Manutenção RGP",
-"Edição dados RGP",
-"Solicitação RGP novo",
-"Recadastramento",
-"Recurso RGP suspenso",
-"Emissão declarações",
-"Agendamentos aposentadoria",
-"Agendamentos salário materno",
-"Agendamentos auxílio doença",
-"Protocolo seguro defeso",
-"Consulta seguro defeso",
-"Recursos seguro defeso",
-"Atualização cadastro INSS",
-"Atualização cadastro Receita Federal",
-"Emissão NIT",
-"Emissão matrícula CEI",
-"Emissão carteira RGP",
-"Emissão carteira de sócio"
-];
+        /* DASHBOARD DIRETORIA [cite: 101, 102, 121, 123] */
+        function updateAdminView() {
+            document.querySelector('#table-admin tbody').innerHTML = db.records.slice().reverse().map(r => 
+                `<tr><td>${r.colab}</td><td>${r.socio}</td><td>${r.serv}</td><td>${r.time}</td></tr>`
+            ).join('');
 
-// ===== USUÁRIOS INICIAIS =====
-if(!localStorage.getItem("usuarios")){
-let usuariosPadrao=[
-{user:"Elizângela",tipo:"colaborador",senha:hash("00"),primeiro:true},
-{user:"Raquel",tipo:"colaborador",senha:hash("00"),primeiro:true},
-{user:"Fernando",tipo:"colaborador",senha:hash("00"),primeiro:true},
-{user:"Sarah",tipo:"colaborador",senha:hash("00"),primeiro:true},
-{user:"Mayla",tipo:"colaborador",senha:hash("00"),primeiro:true},
-{user:"Halana",tipo:"colaborador",senha:hash("00"),primeiro:true},
-{user:"Wanda",tipo:"colaborador",senha:hash("00"),primeiro:true},
-{user:"Márcio",tipo:"admin",senha:hash("2006"),primeiro:true},
-{user:"Arthur",tipo:"admin",senha:hash("2006"),primeiro:true},
-{user:"Antônio",tipo:"admin",senha:hash("2006"),primeiro:true}
-];
-localStorage.setItem("usuarios",JSON.stringify(usuariosPadrao));
-}
+            const stats = {};
+            db.records.forEach(r => stats[r.colab] = (stats[r.colab] || 0) + 1);
 
-if(!localStorage.getItem("atendimentos")){
-localStorage.setItem("atendimentos",JSON.stringify([]));
-}
+            const ctx = document.getElementById('chartGeneral').getContext('2d');
+            if(window.chart) window.chart.destroy();
+            window.chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(stats),
+                    datasets: [{
+                        label: 'Atendimentos',
+                        data: Object.values(stats),
+                        backgroundColor: '#27ae60'
+                    }]
+                },
+                options: { plugins: { legend: { display: false } } }
+            });
+        }
 
-let usuarioLogado=null;
+        function addNewUser() {
+            const name = document.getElementById('new-user-name').value;
+            const role = document.getElementById('new-user-role').value;
+            if(!name) return;
+            const userKey = name.toLowerCase().split(' ')[0] + Math.floor(Math.random()*100);
+            db.users.push({ user: userKey, pass: "123", name: name, role: role, firstAccess: true });
+            save();
+            alert(`Sucesso! Usuário: ${userKey} | Senha: 123`);
+        }
 
-// ===== HASH SHA256 =====
-function hash(text){
-return CryptoJS.SHA256(text).toString();
-}
+        function exportToExcel() {
+            const ws = XLSX.utils.json_to_sheet(db.records);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "ASSOPESCA");
+            XLSX.writeFile(wb, "Relatorio_SigaPesca.xlsx");
+        }
 
-// carregar CryptoJS
-var script=document.createElement('script');
-script.src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js";
-document.head.appendChild(script);
-
-// ===== LOGIN =====
-function login(){
-let user=document.getElementById("loginUser").value;
-let pass=document.getElementById("loginPass").value;
-let usuarios=JSON.parse(localStorage.getItem("usuarios"));
-
-let encontrado=usuarios.find(u=>u.user===user && u.senha===hash(pass));
-
-if(!encontrado){alert("Login inválido");return;}
-
-usuarioLogado=encontrado;
-
-if(encontrado.primeiro){
-document.getElementById("loginBox").classList.add("hidden");
-document.getElementById("trocaSenhaBox").classList.remove("hidden");
-}else{
-entrarSistema();
-}
-}
-
-// ===== TROCAR SENHA =====
-function trocarSenha(){
-let nova=document.getElementById("novaSenha").value;
-let usuarios=JSON.parse(localStorage.getItem("usuarios"));
-let u=usuarios.find(u=>u.user===usuarioLogado.user);
-u.senha=hash(nova);
-u.primeiro=false;
-localStorage.setItem("usuarios",JSON.stringify(usuarios));
-alert("Senha atualizada");
-entrarSistema();
-}
-
-// ===== ENTRAR =====
-function entrarSistema(){
-document.getElementById("trocaSenhaBox").classList.add("hidden");
-if(usuarioLogado.tipo==="colaborador"){
-carregarServicos();
-document.getElementById("colaboradorArea").classList.remove("hidden");
-}else{
-carregarFiltroColaborador();
-gerarGraficoGeral();
-document.getElementById("adminArea").classList.remove("hidden");
-}
-}
-
-// ===== CARREGAR SERVIÇOS =====
-function carregarServicos(){
-let select=document.getElementById("servicoSelect");
-select.innerHTML="";
-servicos.forEach(s=>{
-let opt=document.createElement("option");
-opt.value=s;
-opt.textContent=s;
-select.appendChild(opt);
-});
-}
-
-// ===== REGISTRAR ATENDIMENTO =====
-function registrarAtendimento(){
-let socio=document.getElementById("socio").value;
-let inscricao=document.getElementById("inscricao").value;
-let servico=document.getElementById("servicoSelect").value;
-
-let atendimentos=JSON.parse(localStorage.getItem("atendimentos"));
-
-atendimentos.push({
-colaborador:usuarioLogado.user,
-socio,
-inscricao,
-servico,
-data:new Date().toLocaleString()
-});
-
-localStorage.setItem("atendimentos",JSON.stringify(atendimentos));
-alert("Atendimento registrado");
-document.getElementById("socio").value="";
-document.getElementById("inscricao").value="";
-}
-
-// ===== DASHBOARD GERAL =====
-function gerarGraficoGeral(){
-let atendimentos=JSON.parse(localStorage.getItem("atendimentos"));
-let contagem={};
-atendimentos.forEach(a=>{
-contagem[a.colaborador]=(contagem[a.colaborador]||0)+1;
-});
-
-new Chart(document.getElementById("graficoGeral"),{
-type:'bar',
-data:{labels:Object.keys(contagem),
-datasets:[{label:'Atendimentos',data:Object.values(contagem)}]}
-});
-}
-
-// ===== DASHBOARD INDIVIDUAL =====
-function carregarFiltroColaborador(){
-let select=document.getElementById("filtroColaborador");
-let usuarios=JSON.parse(localStorage.getItem("usuarios"));
-select.innerHTML="";
-usuarios.filter(u=>u.tipo==="colaborador").forEach(u=>{
-let opt=document.createElement("option");
-opt.value=u.user;
-opt.textContent=u.user;
-select.appendChild(opt);
-});
-}
-
-function gerarGraficoIndividual(){
-let nome=document.getElementById("filtroColaborador").value;
-let atendimentos=JSON.parse(localStorage.getItem("atendimentos"));
-let contagem={};
-atendimentos.filter(a=>a.colaborador===nome)
-.forEach(a=>{
-contagem[a.servico]=(contagem[a.servico]||0)+1;
-});
-
-new Chart(document.getElementById("graficoIndividual"),{
-type:'pie',
-data:{labels:Object.keys(contagem),
-datasets:[{data:Object.values(contagem)}]}
-});
-}
-
-// ===== CADASTRAR USUÁRIO =====
-function cadastrarUsuario(){
-let user=document.getElementById("novoUser").value;
-let tipo=document.getElementById("novoTipo").value;
-let usuarios=JSON.parse(localStorage.getItem("usuarios"));
-
-if(usuarios.find(u=>u.user===user)){
-alert("Usuário já existe");return;
-}
-
-usuarios.push({
-user,
-tipo,
-senha:hash(tipo==="admin"?"2006":"00"),
-primeiro:true
-});
-
-localStorage.setItem("usuarios",JSON.stringify(usuarios));
-alert("Usuário cadastrado");
-}
-
-// ===== LOGOUT =====
-function logout(){
-location.reload();
-}
-
-</script>
-
+        function logout() { location.reload(); }
+    </script>
 </body>
 </html>
