@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASSOPESCA - Sistema Seguro</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{margin:0;font-family:Segoe UI;background:#f4f6f9}
+.container{max-width:400px;margin:100px auto;background:#fff;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}
+input,select,button{width:100%;padding:10px;margin:10px 0}
+button{background:#006400;color:#fff;border:none;border-radius:5px;cursor:pointer}
+button:hover{background:#004d00}
+.hidden{display:none}
+.dashboard{padding:30px}
+</style>
+</head>
+<body>
+
+<div class="container" id="loginBox">
+<h2>Login - ASSOPESCA</h2>
+<select id="usuarioSelect"></select>
+<input type="password" id="senha" placeholder="Senha">
+<button onclick="login()">Entrar</button>
+<p id="erro" style="color:red;"></p>
+</div>
+
+<div class="container hidden" id="trocaSenhaBox">
+<h3>Primeiro Acesso - Trocar Senha</h3>
+<input type="password" id="novaSenha" placeholder="Nova Senha">
+<input type="password" id="confirmarSenha" placeholder="Confirmar Senha">
+<button onclick="trocarSenha()">Salvar Nova Senha</button>
+</div>
+
+<div class="dashboard hidden" id="painel">
+<h2>Bem-vindo ao Sistema ASSOPESCA</h2>
+<p id="infoUsuario"></p>
+<button onclick="logout()">Sair</button>
+</div>
+
+<script>
+
+// ======================== CRIPTOGRAFIA SHA-256 ========================
+
+async function hashSenha(senha){
+const encoder = new TextEncoder();
+const data = encoder.encode(senha);
+const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+const hashArray = Array.from(new Uint8Array(hashBuffer));
+return hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ======================== USUÁRIOS INICIAIS ========================
+
+async function inicializarUsuarios(){
+
+if(!localStorage.getItem("usuarios")){
+
+const senhaColab = await hashSenha("00");
+const senhaAdmin = await hashSenha("2006");
+
+const usuarios = {
+"Elizângela":{nivel:"colaborador",senha:senhaColab,primeiroAcesso:true},
+"Raquel":{nivel:"colaborador",senha:senhaColab,primeiroAcesso:true},
+"Fernando":{nivel:"colaborador",senha:senhaColab,primeiroAcesso:true},
+"Sarah":{nivel:"colaborador",senha:senhaColab,primeiroAcesso:true},
+"Mayla":{nivel:"colaborador",senha:senhaColab,primeiroAcesso:true},
+"Halana":{nivel:"colaborador",senha:senhaColab,primeiroAcesso:true},
+"Wanda":{nivel:"colaborador",senha:senhaColab,primeiroAcesso:true},
+"Márcio":{nivel:"admin",senha:senhaAdmin,primeiroAcesso:true},
+"Arthur":{nivel:"admin",senha:senhaAdmin,primeiroAcesso:true},
+"Antônio":{nivel:"adminPrincipal",senha:senhaAdmin,primeiroAcesso:true}
+};
+
+localStorage.setItem("usuarios",JSON.stringify(usuarios));
+}
+
+carregarUsuarios();
+}
+
+// ======================== CARREGAR SELECT ========================
+
+function carregarUsuarios(){
+const usuarios = JSON.parse(localStorage.getItem("usuarios"));
+const select = document.getElementById("usuarioSelect");
+select.innerHTML="";
+Object.keys(usuarios).forEach(nome=>{
+const op=document.createElement("option");
+op.value=nome;
+op.textContent=nome;
+select.appendChild(op);
+});
+}
+
+// ======================== LOGIN ========================
+
+async function login(){
+
+const usuarios = JSON.parse(localStorage.getItem("usuarios"));
+const nome = document.getElementById("usuarioSelect").value;
+const senhaDigitada = document.getElementById("senha").value;
+const senhaHash = await hashSenha(senhaDigitada);
+
+if(usuarios[nome].senha !== senhaHash){
+document.getElementById("erro").innerText="Senha incorreta.";
+return;
+}
+
+localStorage.setItem("usuarioLogado",nome);
+
+if(usuarios[nome].primeiroAcesso){
+document.getElementById("loginBox").classList.add("hidden");
+document.getElementById("trocaSenhaBox").classList.remove("hidden");
+}else{
+entrarSistema(nome);
+}
+}
+
+// ======================== TROCAR SENHA ========================
+
+async function trocarSenha(){
+
+const nova = document.getElementById("novaSenha").value;
+const confirmar = document.getElementById("confirmarSenha").value;
+
+if(nova !== confirmar){
+alert("Senhas não conferem!");
+return;
+}
+
+const usuarios = JSON.parse(localStorage.getItem("usuarios"));
+const nome = localStorage.getItem("usuarioLogado");
+
+usuarios[nome].senha = await hashSenha(nova);
+usuarios[nome].primeiroAcesso = false;
+
+localStorage.setItem("usuarios",JSON.stringify(usuarios));
+
+entrarSistema(nome);
+}
+
+// ======================== ENTRAR NO SISTEMA ========================
+
+function entrarSistema(nome){
+
+document.getElementById("trocaSenhaBox").classList.add("hidden");
+document.getElementById("loginBox").classList.add("hidden");
+document.getElementById("painel").classList.remove("hidden");
+
+const usuarios = JSON.parse(localStorage.getItem("usuarios"));
+document.getElementById("infoUsuario").innerText =
+"Usuário: "+nome+" | Nível: "+usuarios[nome].nivel;
+}
+
+// ======================== LOGOUT ========================
+
+function logout(){
+localStorage.removeItem("usuarioLogado");
+location.reload();
+}
+
+// ======================== INICIALIZAÇÃO ========================
+
+inicializarUsuarios();
+
+</script>
+
+</body>
+</html>
