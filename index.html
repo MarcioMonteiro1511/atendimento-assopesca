@@ -3,22 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ASSOPESCA - Sistema Seguro</title>
+<title>ASSOPESCA - Sistema Completo</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
 body{margin:0;font-family:Segoe UI;background:#f4f6f9}
 .container{max-width:400px;margin:100px auto;background:#fff;padding:30px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}
-input,select,button{width:100%;padding:10px;margin:10px 0}
+.hidden{display:none}
+.sidebar{width:240px;height:100vh;background:#006400;position:fixed;color:#fff;padding:20px}
+.sidebar button{width:100%;margin-top:10px;background:#004d00;color:#fff;border:none;padding:10px;cursor:pointer}
+.main{margin-left:260px;padding:30px}
+.card{background:#fff;padding:20px;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:20px}
+input,select,button{padding:8px;margin:5px;width:95%}
 button{background:#006400;color:#fff;border:none;border-radius:5px;cursor:pointer}
 button:hover{background:#004d00}
-.hidden{display:none}
-.dashboard{padding:30px}
+canvas{max-height:300px}
 </style>
 </head>
 <body>
 
+<!-- LOGIN -->
 <div class="container" id="loginBox">
 <h2>Login - ASSOPESCA</h2>
 <select id="usuarioSelect"></select>
@@ -27,6 +33,7 @@ button:hover{background:#004d00}
 <p id="erro" style="color:red;"></p>
 </div>
 
+<!-- TROCA SENHA -->
 <div class="container hidden" id="trocaSenhaBox">
 <h3>Primeiro Acesso - Trocar Senha</h3>
 <input type="password" id="novaSenha" placeholder="Nova Senha">
@@ -34,138 +41,290 @@ button:hover{background:#004d00}
 <button onclick="trocarSenha()">Salvar Nova Senha</button>
 </div>
 
-<div class="dashboard hidden" id="painel">
-<h2>Bem-vindo ao Sistema ASSOPESCA</h2>
-<p id="infoUsuario"></p>
+<!-- MENU -->
+<div class="sidebar hidden" id="menu">
+<h3>ASSOPESCA</h3>
+<button onclick="exportarExcel()">Exportar Excel</button>
 <button onclick="logout()">Sair</button>
+</div>
+
+<!-- PAINEL -->
+<div class="main hidden" id="painel">
+
+<div class="card">
+<h3>Registrar Atendimento</h3>
+<input type="text" id="socio" placeholder="Nome do Sócio">
+<input type="text" id="inscricao" placeholder="Inscrição">
+<select id="colaboradorSelect"></select>
+<select id="servicoSelect"></select>
+<button onclick="registrar()">Registrar</button>
+</div>
+
+<div class="card hidden" id="cadColabCard">
+<h3>Cadastrar Novo Colaborador</h3>
+<input type="text" id="novoColaborador">
+<button onclick="cadastrarColaborador()">Cadastrar</button>
+</div>
+
+<div class="card hidden" id="cadServicoCard">
+<h3>Cadastrar Novo Serviço</h3>
+<input type="text" id="novoServico">
+<button onclick="cadastrarServico()">Cadastrar</button>
+</div>
+
+<div class="card">
+<h3>Dashboard</h3>
+<canvas id="grafico"></canvas>
+</div>
+
 </div>
 
 <script>
 
-// ======================== CRIPTOGRAFIA SHA-256 ========================
-
+// ================= CRIPTOGRAFIA =================
 async function hashSenha(senha){
-const encoder = new TextEncoder();
-const data = encoder.encode(senha);
-const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-const hashArray = Array.from(new Uint8Array(hashBuffer));
-return hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
+const encoder=new TextEncoder();
+const data=encoder.encode(senha);
+const hash=await crypto.subtle.digest("SHA-256",data);
+return Array.from(new Uint8Array(hash))
+.map(b=>b.toString(16).padStart(2,"0")).join("");
 }
 
-// ======================== USUÁRIOS INICIAIS ========================
+// ================= DADOS INICIAIS =================
 
-async function inicializarUsuarios(){
+let colaboradoresPadrao=[
+"Elizângela","Raquel","Fernando","Sarah","Mayla",
+"Halana","Wanda","Márcio","Arthur","Terezinha"
+];
+
+let servicosPadrao=[
+"Manutenção RGP","Edição Dados RGP","Solicitação RGP Novo",
+"Recadastramento","Recurso RGP Suspenso","Emissão Declarações",
+"Agendamentos","Protocolo Seguro Defeso","Consulta Seguro Defeso",
+"Recursos Seguro Defeso","Atualização INSS","Atualização Receita Federal",
+"Emissão NIT","Matrícula CEI","Carteira RGP","Carteira Sócio"
+];
+
+let grafico;
+let usuarioLogado=null;
+
+// ================= INICIALIZAÇÃO =================
+
+async function inicializar(){
 
 if(!localStorage.getItem("usuarios")){
+const senhaColab=await hashSenha("00");
+const senhaAdmin=await hashSenha("2006");
 
-const senhaColab = await hashSenha("00");
-const senhaAdmin = await hashSenha("2006");
+let usuarios={};
 
-const usuarios = {
-"Elizângela":{nivel:"colaborador",senha:senhaColab,primeiroAcesso:true},
-"Raquel":{nivel:"colaborador",senha:senhaColab,primeiroAcesso:true},
-"Fernando":{nivel:"colaborador",senha:senhaColab,primeiroAcesso:true},
-"Sarah":{nivel:"colaborador",senha:senhaColab,primeiroAcesso:true},
-"Mayla":{nivel:"colaborador",senha:senhaColab,primeiroAcesso:true},
-"Halana":{nivel:"colaborador",senha:senhaColab,primeiroAcesso:true},
-"Wanda":{nivel:"colaborador",senha:senhaColab,primeiroAcesso:true},
-"Márcio":{nivel:"admin",senha:senhaAdmin,primeiroAcesso:true},
-"Arthur":{nivel:"admin",senha:senhaAdmin,primeiroAcesso:true},
-"Antônio":{nivel:"adminPrincipal",senha:senhaAdmin,primeiroAcesso:true}
-};
+colaboradoresPadrao.forEach(nome=>{
+usuarios[nome]={nivel:"colaborador",senha:senhaColab,primeiroAcesso:true};
+});
+
+usuarios["Antônio"]={nivel:"adminPrincipal",senha:senhaAdmin,primeiroAcesso:true};
+usuarios["Márcio"]={nivel:"admin",senha:senhaAdmin,primeiroAcesso:true};
+usuarios["Arthur"]={nivel:"admin",senha:senhaAdmin,primeiroAcesso:true};
 
 localStorage.setItem("usuarios",JSON.stringify(usuarios));
+localStorage.setItem("colaboradores",JSON.stringify(colaboradoresPadrao));
+localStorage.setItem("servicos",JSON.stringify(servicosPadrao));
 }
 
 carregarUsuarios();
 }
 
-// ======================== CARREGAR SELECT ========================
-
-function carregarUsuarios(){
-const usuarios = JSON.parse(localStorage.getItem("usuarios"));
-const select = document.getElementById("usuarioSelect");
-select.innerHTML="";
-Object.keys(usuarios).forEach(nome=>{
-const op=document.createElement("option");
-op.value=nome;
-op.textContent=nome;
-select.appendChild(op);
-});
-}
-
-// ======================== LOGIN ========================
+// ================= LOGIN =================
 
 async function login(){
+const usuarios=JSON.parse(localStorage.getItem("usuarios"));
+const nome=document.getElementById("usuarioSelect").value;
+const senhaDigitada=await hashSenha(document.getElementById("senha").value);
 
-const usuarios = JSON.parse(localStorage.getItem("usuarios"));
-const nome = document.getElementById("usuarioSelect").value;
-const senhaDigitada = document.getElementById("senha").value;
-const senhaHash = await hashSenha(senhaDigitada);
-
-if(usuarios[nome].senha !== senhaHash){
-document.getElementById("erro").innerText="Senha incorreta.";
+if(usuarios[nome].senha!==senhaDigitada){
+document.getElementById("erro").innerText="Senha incorreta";
 return;
 }
 
+usuarioLogado=nome;
 localStorage.setItem("usuarioLogado",nome);
 
 if(usuarios[nome].primeiroAcesso){
 document.getElementById("loginBox").classList.add("hidden");
 document.getElementById("trocaSenhaBox").classList.remove("hidden");
 }else{
-entrarSistema(nome);
+entrarSistema();
 }
 }
 
-// ======================== TROCAR SENHA ========================
+// ================= TROCAR SENHA =================
 
 async function trocarSenha(){
+const nova=document.getElementById("novaSenha").value;
+const confirmar=document.getElementById("confirmarSenha").value;
 
-const nova = document.getElementById("novaSenha").value;
-const confirmar = document.getElementById("confirmarSenha").value;
+if(nova!==confirmar){alert("Senhas não conferem");return;}
 
-if(nova !== confirmar){
-alert("Senhas não conferem!");
-return;
-}
-
-const usuarios = JSON.parse(localStorage.getItem("usuarios"));
-const nome = localStorage.getItem("usuarioLogado");
-
-usuarios[nome].senha = await hashSenha(nova);
-usuarios[nome].primeiroAcesso = false;
-
+let usuarios=JSON.parse(localStorage.getItem("usuarios"));
+usuarios[usuarioLogado].senha=await hashSenha(nova);
+usuarios[usuarioLogado].primeiroAcesso=false;
 localStorage.setItem("usuarios",JSON.stringify(usuarios));
 
-entrarSistema(nome);
+entrarSistema();
 }
 
-// ======================== ENTRAR NO SISTEMA ========================
+// ================= ENTRAR =================
 
-function entrarSistema(nome){
-
+function entrarSistema(){
 document.getElementById("trocaSenhaBox").classList.add("hidden");
 document.getElementById("loginBox").classList.add("hidden");
+document.getElementById("menu").classList.remove("hidden");
 document.getElementById("painel").classList.remove("hidden");
 
-const usuarios = JSON.parse(localStorage.getItem("usuarios"));
-document.getElementById("infoUsuario").innerText =
-"Usuário: "+nome+" | Nível: "+usuarios[nome].nivel;
+aplicarPermissoes();
+carregarSelects();
+atualizarDashboard();
 }
 
-// ======================== LOGOUT ========================
+// ================= PERMISSÕES =================
 
-function logout(){
-localStorage.removeItem("usuarioLogado");
-location.reload();
+function aplicarPermissoes(){
+let usuarios=JSON.parse(localStorage.getItem("usuarios"));
+let nivel=usuarios[usuarioLogado].nivel;
+
+if(nivel==="adminPrincipal"){
+document.getElementById("cadColabCard").classList.remove("hidden");
+document.getElementById("cadServicoCard").classList.remove("hidden");
 }
 
-// ======================== INICIALIZAÇÃO ========================
+if(nivel==="colaborador"){
+document.getElementById("colaboradorSelect").value=usuarioLogado;
+document.getElementById("colaboradorSelect").disabled=true;
+}
+}
 
-inicializarUsuarios();
+// ================= SELECTS =================
+
+function carregarSelects(){
+let colaboradores=JSON.parse(localStorage.getItem("colaboradores"));
+let servicos=JSON.parse(localStorage.getItem("servicos"));
+
+let colSelect=document.getElementById("colaboradorSelect");
+colSelect.innerHTML="";
+colaboradores.forEach(c=>{
+let op=document.createElement("option");
+op.value=c; op.textContent=c;
+colSelect.appendChild(op);
+});
+
+let servSelect=document.getElementById("servicoSelect");
+servSelect.innerHTML="";
+servicos.forEach(s=>{
+let op=document.createElement("option");
+op.value=s; op.textContent=s;
+servSelect.appendChild(op);
+});
+}
+
+// ================= CADASTROS =================
+
+async function cadastrarColaborador(){
+let nome=document.getElementById("novoColaborador").value;
+let colaboradores=JSON.parse(localStorage.getItem("colaboradores"));
+colaboradores.push(nome);
+localStorage.setItem("colaboradores",JSON.stringify(colaboradores));
+
+let usuarios=JSON.parse(localStorage.getItem("usuarios"));
+usuarios[nome]={nivel:"colaborador",senha:await hashSenha("00"),primeiroAcesso:true};
+localStorage.setItem("usuarios",JSON.stringify(usuarios));
+
+carregarUsuarios();
+carregarSelects();
+}
+
+function cadastrarServico(){
+let nome=document.getElementById("novoServico").value;
+let servicos=JSON.parse(localStorage.getItem("servicos"));
+servicos.push(nome);
+localStorage.setItem("servicos",JSON.stringify(servicos));
+carregarSelects();
+}
+
+// ================= REGISTRO =================
+
+function registrar(){
+let atendimentos=JSON.parse(localStorage.getItem("atendimentos"))||[];
+
+let novo={
+socio:document.getElementById("socio").value,
+inscricao:document.getElementById("inscricao").value,
+colaborador:document.getElementById("colaboradorSelect").value,
+servico:document.getElementById("servicoSelect").value,
+dataHora:new Date().toLocaleString()
+};
+
+atendimentos.push(novo);
+localStorage.setItem("atendimentos",JSON.stringify(atendimentos));
+
+atualizarDashboard();
+}
+
+// ================= DASHBOARD =================
+
+function atualizarDashboard(){
+let atendimentos=JSON.parse(localStorage.getItem("atendimentos"))||[];
+let usuarios=JSON.parse(localStorage.getItem("usuarios"));
+let nivel=usuarios[usuarioLogado].nivel;
+
+if(nivel==="colaborador"){
+atendimentos=atendimentos.filter(a=>a.colaborador===usuarioLogado);
+}
+
+let contagem={};
+atendimentos.forEach(a=>{
+contagem[a.colaborador]=(contagem[a.colaborador]||0)+1;
+});
+
+if(grafico) grafico.destroy();
+
+grafico=new Chart(document.getElementById("grafico"),{
+type:"bar",
+data:{
+labels:Object.keys(contagem),
+datasets:[{
+label:"Atendimentos",
+data:Object.values(contagem),
+backgroundColor:"green"
+}]
+}
+});
+}
+
+// ================= EXPORTAÇÃO =================
+
+function exportarExcel(){
+let atendimentos=JSON.parse(localStorage.getItem("atendimentos"))||[];
+let worksheet=XLSX.utils.json_to_sheet(atendimentos);
+let workbook=XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(workbook,worksheet,"Atendimentos");
+XLSX.writeFile(workbook,"Relatorio_ASSOPESCA.xlsx");
+}
+
+function logout(){ location.reload(); }
+
+function carregarUsuarios(){
+let usuarios=JSON.parse(localStorage.getItem("usuarios"));
+let select=document.getElementById("usuarioSelect");
+select.innerHTML="";
+Object.keys(usuarios).forEach(nome=>{
+let op=document.createElement("option");
+op.value=nome; op.textContent=nome;
+select.appendChild(op);
+});
+}
+
+inicializar();
 
 </script>
-
 </body>
 </html>
